@@ -370,7 +370,7 @@ class controller {
                 inline_keyboard: [
                     [{
                         text: "😔Не могу прийти",
-                        url: "https://t.me/testAuTeam_bot?start=not_go"
+                        url: "https://t.me/testAuroraTeamBot?start=not_go"
                     }]
                 ]
             }
@@ -427,7 +427,7 @@ class controller {
                 inline_keyboard: [
                     [{
                         text: "😔Не могу прийти",
-                        url: "https://t.me/testAuTeam_bot?start=not_go"
+                        url: "https://t.me/testAuroraTeamBot?start=not_go"
                     }]
                 ]
             }
