@@ -421,7 +421,7 @@ class controller {
             parse_mode: 'HTML'
         });
 
-        return ctx.telegram.editMessageText(-1001750601256, message.message_id, undefined, text, {
+        return ctx.telegram.editMessageText(process.env.CHAT_ID, message.message_id, undefined, text, {
             entities: message.entities,
             reply_markup: {
                 inline_keyboard: [
