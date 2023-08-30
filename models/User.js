@@ -17,7 +17,9 @@ const userSchema = new Schema ({
 	},
 	warns: {
 		type: Object
-	}
+	},
+	isAdmin: Boolean,
+	birthday: 'String'
 });
 
 const User = model('user', userSchema);

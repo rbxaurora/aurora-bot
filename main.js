@@ -20,7 +20,7 @@ app.listen(port, () => {
 mongoose.connect(process.env.DB_PASS);
 const Session = require(`./models/Session`);
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+const bot = new Telegraf(process.env.TEST_TOKEN);
 
 app.get('/', (req, res) => {
 	res.send('Bot is working successfully!');
@@ -41,6 +41,8 @@ bot.hears(/\.варн (.+)/, (ctx) => controller.warn(ctx));
 bot.hears(/\.вареник (.+)/, (ctx) => controller.warn(ctx));
 bot.hears(/\.варны/, (ctx) => controller.allwarns(ctx));
 bot.hears(/\.снять варны/, (ctx) => controller.clearWarns(ctx));
+bot.hears(/\кто админ/, (ctx) => controller.adminList(ctx));
+bot.hears(/\.планировщик старт/, (ctx) => controller.cron(ctx));
 bot.command("send", (ctx) => controller.send(ctx));
 bot.hears(/\.бан (.+)/, (ctx) => controller.ban(ctx));
 bot.hears(/\.съёмки (.+)/, (ctx) => controller.pinMsg(ctx));
@@ -53,10 +55,10 @@ bot.on(message('text'), async (ctx) => {
 		controller.saveAnswerNotGo(ctx);
 	}
 });
-bot.command("staff", (ctx) => controller.adminList(ctx));
 bot.on('new_chat_member', (ctx) => controller.newMember(ctx));
 bot.on('left_chat_member', (ctx) => controller.leftMember(ctx));
 bot.on(message('photo'), (ctx) => controller.dismiss(ctx));
 bot.on(message('video'), (ctx) => controller.dismiss(ctx));
+
 
 bot.launch();

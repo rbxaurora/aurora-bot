@@ -1,10 +1,10 @@
-const Admin = require('./models/Admin');
 const Tea = require('./models/Tea');
 const User = require('./models/User');
 const dayjs = require('dayjs');
 const Msg = require(`./models/Message`);
 const Session = require(`./models/Session`);
 const Delmess = require('./models/Delmess');
+const CronJob = require(`cron`).CronJob;
 
 let delmess;
 let counter = 1;
@@ -21,9 +21,9 @@ class controller {
             const untilDate = Math.floor((Date.now() + time) / 1000);
             const textMessage = ctx.match[1].substr(eqPos);
 
-            const admin = await Admin.findOne({ auroraID: ctx.message.from.id });
+            const admin = await User.findOne({ auroraID: ctx.message.from.id });
 
-            if (admin && (admin.role == `owner` || admin.role == `deputy`)) {
+            if (admin && (admin.role == `OWNER` || admin.role == `DEPUTY`)) {
                 if (time) {
                     ctx.telegram.sendMessage(chatId, `Участник <i>${userName}</i> [${userId}] <b>был обеззвучен 🔇 на ${time / 60000} минут администратором Хауса ${ctx.message.from.first_name}</b>. \n\n<i>Причина: ${textMessage}</i>`, {
                         parse_mode: 'HTML'
@@ -59,9 +59,9 @@ class controller {
             const userId = ctx.message.reply_to_message.from.id;
             const userName = ctx.message.reply_to_message.from.first_name;
 
-            const admin = await Admin.findOne({ auroraID: ctx.message.from.id });
+            const admin = await User.findOne({ auroraID: ctx.message.from.id });
 
-            if (admin && (admin.role == `owner` || admin.role == `deputy`)) {
+            if (admin && (admin.role == `OWNER` || admin.role == `DEPUTY`)) {
                 ctx.telegram.sendMessage(chatId, `✅Участник <i>${userName}</i> [${userId}] <b>получил право говорить в беседе.</b>\n\n<i>Пожалуйста, впредь не нарушайте правила Хауса😉</i>`, {
                     parse_mode: 'HTML'
                 });
@@ -156,9 +156,9 @@ class controller {
 
     async teaTop (ctx) {
         const chatId = ctx.message.chat.id;
-        let top = `<b>📊Статистика по количеству выпитого чая в чате</b>\n`;
+        let top = `<b>📊ТОП 15 ЛЮБИТЕЛЕЙ ЧАЯ</b>\n`;
         let total = 0;
-        const teas = await Tea.find({}).sort({ total: -1 });
+        const teas = await Tea.find({}).sort({ total: -1 }).limit(15);
 
         for (let i = 0; i < teas.length; i++) {
             const tea = teas[i];
@@ -179,9 +179,9 @@ class controller {
             const userName = ctx.message.reply_to_message.from.first_name;
             const resp = ctx.match[1];
 
-            const admin = await Admin.findOne({ auroraID: ctx.message.from.id });
+            const admin = await User.findOne({ auroraID: ctx.message.from.id });
 
-            if (admin && (admin.role == `owner` || admin.role == `deputy`)) {
+            if (admin && (admin.role == `OWNER` || admin.role == `DEPUTY`)) {
                 let user = await User.findOne({ auroraID: userId });
 
                 if (!user) {
@@ -270,7 +270,7 @@ class controller {
             const userId = ctx.message.reply_to_message.from.id;
             const userName = ctx.message.reply_to_message.from.first_name;
 
-            const admin = await Admin.findOne({ auroraID: ctx.message.from.id });
+            const admin = await User.findOne({ auroraID: ctx.message.from.id });
 
             if (!admin) {
                 return ctx.telegram.sendMessage(chatId, '❌<b>У вас нет полномочий на использование данной команды. Пожалуйста, обратитесь к администрации.</b>' ,{
@@ -300,9 +300,9 @@ class controller {
             const chatId = process.env.CHAT_ID;
             const resp = ctx.message.reply_to_message.text;
 
-            const admin = await Admin.findOne({ auroraID: ctx.message.from.id });
+            const admin = await User.findOne({ auroraID: ctx.message.from.id });
 
-            if (admin && (admin.role == `owner` || admin.role == `deputy`)) {
+            if (admin && (admin.role == `OWNER` || admin.role == `DEPUTY`)) {
                 ctx.telegram.sendMessage(chatId, resp);
             } else {
                 ctx.telegram.sendMessage(chatId, `❌<b>У вас нет полномочий на использование данной команды. Пожалуйста, обратитесь к администрации.</b>`, {
@@ -319,9 +319,9 @@ class controller {
             const userName = ctx.message.reply_to_message.from.first_name;
             const resp = ctx.match[1];
 
-            const admin = await Admin.findOne({ auroraID: ctx.message.from.id });
+            const admin = await User.findOne({ auroraID: ctx.message.from.id });
 
-            if (!admin || admin.role == 'spectator') {
+            if (!admin || admin.role == 'SPECTATOR') {
                 return ctx.telegram.sendMessage(chatId, `❌<b>У вас нет полномочий на использование данной команды. Пожалуйста, обратитесь к администрации.</b>`, {
                     parse_mode: 'HTML'
                 });
@@ -350,9 +350,9 @@ class controller {
         const time = resp.split(` `)[1];
         let when;
 
-        const admin = await Admin.findOne({ auroraID: userId });
+        const admin = await User.findOne({ auroraID: userId });
 
-        if (!admin || admin.role == 'spectator' || admin.role == 'deputy') {
+        if (!admin || admin.role == 'SPECTATOR' || admin.role == 'DEPUTY') {
             return ctx.telegram.sendMessage(chatId, `❌<b>У вас нет полномочий на использование данной команды. Пожалуйста, обратитесь к администрации.</b>`, {
                 parse_mode: 'HTML'
             });
@@ -436,34 +436,54 @@ class controller {
 
     async adminList (ctx) {
         const chatId = ctx.message.chat.id;
-        const admins = await Users.find({});
-
-        let owner;
-        let deputy = [];
-        let spectator;
-
+        console.log(chatId);
         let adminList = `<b>⚜АДМИНИСТРАЦИЯ ХАУСА</b>\n\n`;
 
-        for (let i = 0; i < admins.length; i++) {
-            let admin = admins[i];
+        getOwner();
 
-            if (admin.role == `owner`) {
-                owner = admin;
-            } else if (admin.role == `deputy`) {
-                deputy.push(admin);
-            } else if (admin.role == `spectator`) {
-                spectator = admin;
-            }
+        async function getOwner() {
+            const owner = await User.findOne({ role: 'OWNER' });
+
+            const ownerRole = await ctx.telegram.getChatMember(chatId, owner.auroraID);
+
+            adminList += `👑<b>Создатель Хауса</b>\n└ ${owner.name} » <i>${ownerRole.custom_title}</i>\n\n`;
+            getDeputies();
         }
 
-        const ownerRole = await ctx.telegram.getChatMember(chatId, owner.auroraID);
-        const deputyRole = await ctx.telegram.getChatMember(chatId, deputy[0].auroraID);
+        async function getDeputies() {
+            adminList += `⚜<b>Заместители Создателя</b>\n`;
+            const deputies = await User.find({ role: 'DEPUTY' });
 
-        adminList += `👑<b>Создатель Хауса</b>\n└ ${owner.name} » <i>${ownerRole.custom_title}</i>\n\n👮⚜<b>Заместители</b>\n└ ${deputy[0].name} » <i>${deputyRole.custom_title}</i>\n└ ${deputy[1].name} » <i>${deputyRole.custom_title}</i>\n\n👮‍♂️<b>Следящий Хауса</b>\n└ ${spectator.name}`;
+            for (let i = 0; i <= deputies.length; i++) {
+                const deputy = deputies[i];
 
-        return ctx.telegram.sendMessage(chatId, adminList, {
-            parse_mode: 'HTML'
-        });
+                const deputyRole = await ctx.telegram.getChatMember(chatId, deputy.auroraID);
+                adminList += `└ ${deputy.name} » <i>${deputyRole.custom_title}</i>\n`;
+            }
+
+            adminList += `\n`;
+            getSpectators();
+        }
+
+        async function getSpectators() {
+            adminList += `👮‍♀️<b>Заместители Создателя</b>\n`;
+            const spectators = await User.findOne({ role: 'SPECTATOR' });
+
+            for (let i = 0; i <= spectators.length; i++) {
+                const spectator = spectators[i];
+
+                const specRole = await ctx.telegram.getChatMember(chatId, spectator.auroraID);
+                adminList += `└ ${spectator.name} » <i>${specRole.custom_title}</i>\n`;
+            }
+
+            returnAdmins();
+        }
+
+        function returnAdmins () {
+            return ctx.telegram.sendMessage(chatId, adminList, {
+                parse_mode: 'HTML'
+            });
+        }
     }
 
     async newMember (ctx) {
@@ -489,7 +509,16 @@ class controller {
                   },
                   parse_mode: 'HTML'
                 }
-              );
+            );
+
+            const user = new User({
+                name: userName,
+                auroraID: userId,
+                role: 'USER',
+                isAdmin: false
+            });
+
+            await user.save();
         }
     }
 
@@ -505,6 +534,8 @@ class controller {
             parse_mode: 'HTML',
           }
         );
+
+        await User.deleteOne({ auroraID: userId });
     }
 
     async dismiss (ctx) {
@@ -514,9 +545,9 @@ class controller {
         const channelName = ctx.message.forward_from_chat?.title;
 
         if (channelName?.includes('Топор') || channelName?.includes('Труха')) {
-            const admin = await Users.findOne({ auroraID: userId });
+            const user = await User.findOne({ auroraID: userId });
 
-            if (!admin) {
+            if (!user?.isAdmin) {
                 const delmess = new Delmess({
                     msgId: msgId
                 });
@@ -552,6 +583,33 @@ class controller {
             await Delmess.deleteMany();
             counter--;
         }
+    }
+
+    async cron (ctx) {
+        const chatId = ctx.message.chat.id;
+        ctx.telegram.sendMessage(chatId, `✅Планировщик запущен!`);
+
+        const bday = new CronJob(
+            '0 0 * * *',
+            async function() {
+                const day = dayjs().format('DD.MM');
+                const bday = await User.find({ birthday: day });
+
+                for (let i = 0; i < bday.length; i++) {
+                    const user = bday[i];
+
+                    setTimeout(() => {
+                        ctx.telegram.sendPhoto(chatId, 'https://as2.ftcdn.net/v2/jpg/04/76/81/75/1000_F_476817596_dcB5ERJBjdc6nnhyuh9ghl8xaLC05auK.jpg', {
+                            caption: `<b>Поздравляем <a href="tg://user?id=${user.auroraID}">${user.name}</a> с днем рождения!🎁</b>\n\nОт имени всего Хауса желаем тебе счастья и здоровья. Стремись к своим целям, несмотря ни на какие трудности. Пусть твои близкие друзья и родственники помогают тебе на протяжении твоего жизненного пути, чтобы каждый день приносил тебе много незабываемых, веселых и счастливых моментов.\n\n--\n<i>С любовью от администрации AURORA TEAM❤</i>`,
+                            parse_mode: 'HTML'
+                        });
+                    }, 1000);
+                }
+            },
+            null,
+            true,
+            'Europe/Moscow'
+        );
     }
 }
 
