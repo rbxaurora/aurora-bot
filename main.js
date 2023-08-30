@@ -20,7 +20,7 @@ app.listen(port, () => {
 mongoose.connect(process.env.DB_PASS);
 const Session = require(`./models/Session`);
 
-const bot = new Telegraf(process.env.TEST_TOKEN);
+const bot = new Telegraf(process.env.BOT_TOKEN);
 
 app.get('/', (req, res) => {
 	res.send('Bot is working successfully!');
