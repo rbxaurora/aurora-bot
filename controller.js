@@ -590,12 +590,10 @@ class controller {
         ctx.telegram.sendMessage(chatId, `✅Планировщик запущен!`);
 
         const bday = new CronJob(
-            '* * * * *',
+            '0 0 * * *',
             async function() {
                 const day = dayjs().format('DD.MM');
                 const bday = await User.find({ birthday: day });
-
-                ctx.telegram.sendMessage(chatId, day);
 
                 for (let i = 0; i < bday.length; i++) {
                     const user = bday[i];
